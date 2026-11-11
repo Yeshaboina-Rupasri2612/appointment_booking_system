@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointment Booking System</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 30px 16px;
+      background: #f1f7f6;
+      color: #203638;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      max-width: 720px;
+      margin: auto;
+    }
+
+    h1 { color: #17695f; }
+    h2 { margin-top: 0; }
+
+    .card {
+      background: white;
+      padding: 24px;
+      margin: 20px 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 18px #173a3212;
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input, select, button {
+      padding: 11px;
+      border: 1px solid #ccd9d7;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
+    button {
+      border: 0;
+      background: #197a6d;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover { background: #125d53; }
+
+    .time-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .time-buttons button {
+      background: white;
+      border: 1px solid #197a6d;
+      color: #197a6d;
+    }
+
+    .time-buttons button.selected {
+      background: #197a6d;
+      color: white;
+    }
+
+    .time-buttons button:disabled {
+      background: #eee;
+      border-color: #ddd;
+      color: #999;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
+    .appointment {
+      border: 1px solid #dce7e5;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 10px 0;
+    }
+
+    .appointment button {
+      background: #b74b4b;
+      margin-top: 10px;
+      padding: 8px 12px;
+    }
+
+    #message { color: #197a6d; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>CarePoint Appointment Booking</h1>
+    <p>Choose a service, date, and available appointment time.</p>
+
+    <section class="card">
+      <h2>Book an Appointment</h2>
+
+      <form id="bookingForm">
+        <label>
+          Full name
+          <input name="name" type="text" required>
+        </label>
+
+        <label>
+          Email address
+          <input name="email" type="email" required>
+        </label>
+
+        <label>
+          Service
+          <select name="service" required>
+            <option value="">Choose a service</option>
+            <option>General consultation</option>
+            <option>Dental check-up</option>
+            <option>Eye examination</option>
+            <option>Skin consultation</option>
+          </select>
+        </label>
+
+        <label>
+          Doctor
+          <select name="doctor" required>
+            <option value="">Choose a doctor</option>
+            <option>Dr. Asha Rao</option>
+            <option>Dr. Vikram Shah</option>
+            <option>Dr. Meera Nair</option>
+          </select>
+        </label>
+
+        <label>
+          Appointment date
+          <input id="date" name="date" type="date" required>
+        </label>
+
+        <div>
+          <strong>Available times</strong>
+          <div id="times" class="time-buttons"></div>
+        </div>
+
+        <button type="submit">Confirm Appointment</button>
+        <p id="message" role="status"></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>My Appointments</h2>
+      <div id="appointments"></div>
+    </section>
+  </main>
+
+  <script>
+    const availableTimes = [
+      "09:00 AM", "10:00 AM", "11:00 AM",
+      "01:00 PM", "02:00 PM", "03:00 PM"
+    ];
+
+    const form = document.getElementById("bookingForm");
+    const dateInput = document.getElementById("date");
+    const timesContainer = document.getElementById("times");
+    const appointmentsContainer = document.getElementById("appointments");
+    const message = document.getElementById("message");
+
+    let selectedTime = "";
+
+    // Do not allow dates in the past.
+    const today = new Date();
+    dateInput.min = new Date(
+      today.getTime() - today.getTimezoneOffset() * 60000
+    ).toISOString().slice(0, 10);
+
+    function getAppointments() {
+      return JSON.parse(localStorage.getItem("appointments") || "[]");
+    }
+
+    function showTimes() {
+      selectedTime = "";
+      timesContainer.innerHTML = "";
+
+      const bookedTimes = getAppointments()
+        .filter(appointment => appointment.date === dateInput.value)
+        .map(appointment => appointment.time);
+
+      availableTimes.forEach(time => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = time;
+
+        if (bookedTimes.includes(time)) {
+          button.disabled = true;
+        }
+
+        button.addEventListener("click", () => {
+          document.querySelectorAll("#times button")
+            .forEach(item => item.classList.remove("selected"));
+
+          button.classList.add("selected");
+          selectedTime = time;
+        });
+
+        timesContainer.appendChild(button);
+      });
+    }
+
+    function showAppointments() {
+      const appointments = getAppointments();
+      appointmentsContainer.innerHTML = "";
+
+      if (appointments.length === 0) {
+        appointmentsContainer.textContent = "No appointments booked yet.";
+        return;
+      }
+
+      appointments.forEach(appointment => {
+        const card = document.createElement("div");
+        card.className = "appointment";
+
+        const details = document.createElement("p");
+        details.textContent =
+          appointment.name + " — " + appointment.service +
+          " with " + appointment.doctor +
+          " on " + appointment.date + " at " + appointment.time;
+
+        const email = document.createElement("p");
+        email.textContent = appointment.email;
+
+        const cancelButton = document.createElement("button");
+        cancelButton.textContent = "Cancel appointment";
+        cancelButton.addEventListener("click", () => {
+          const remaining = getAppointments()
+            .filter(item => item.id !== appointment.id);
+
+          localStorage.setItem("appointments", JSON.stringify(remaining));
+          showAppointments();
+          showTimes();
+        });
+
+        card.append(details, email, cancelButton);
+        appointmentsContainer.appendChild(card);
+      });
+    }
+
+    dateInput.addEventListener("change", showTimes);
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      if (!selectedTime) {
+        message.textContent = "Please select an available time.";
+        return;
+      }
+
+      const formData = new FormData(form);
+      const appointment = {
+        id: Date.now().toString(),
+        name: formData.get("name"),
+        email: formData.get("email"),
+        service: formData.get("service"),
+        doctor: formData.get("doctor"),
+        date: formData.get("date"),
+        time: selectedTime
+      };
+
+      const appointments = getAppointments();
+
+      if (appointments.some(item =>
+        item.date === appointment.date && item.time === appointment.time
+      )) {
+        message.textContent = "That time is already booked. Choose another.";
+        showTimes();
+        return;
+      }
+
+      appointments.push(appointment);
+      localStorage.setItem("appointments", JSON.stringify(appointments));
+
+      form.reset();
+      selectedTime = "";
+      message.textContent = "Appointment booked successfully!";
+      showTimes();
+      showAppointments();
+    });
+
+    showTimes();
+    showAppointments();
+  </script>
+</body>
+</html>
